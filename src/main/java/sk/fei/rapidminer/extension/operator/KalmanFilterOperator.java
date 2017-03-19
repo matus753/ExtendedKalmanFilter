@@ -31,6 +31,8 @@ public class KalmanFilterOperator extends Operator{
 	
 	public static final String PARAMETER_RANGE_OF_NOISE = "range of noise";
 	public static final String PARAMETER_CONSTANT_A = "constant A";
+	public static final String PARAMETER_CONSTANT_B = "constant B";
+	public static final String PARAMETER_CONSTANT_C = "constant C";
 	public static final String PARAMETER_START_VALUE_OF_P = "start value of P";
 	public static final String PARAMETER_DEFINE_START_VALUE = "define x0";
 	public static final String PARAMETER_START_VALUE = "x0";
@@ -79,25 +81,39 @@ public class KalmanFilterOperator extends Operator{
 		types.add(type);
 		
 		types.add(new ParameterTypeDouble(
-			PARAMETER_CONSTANT_A,
-			"This parameter defines costant A in equation for xk.",
-			Integer.MIN_VALUE,
-			Integer.MAX_VALUE,
-			1));
+				PARAMETER_CONSTANT_A,
+				"This parameter defines costant A in equation for xk.",
+				Integer.MIN_VALUE,
+				Integer.MAX_VALUE,
+				1));
 		
 		types.add(new ParameterTypeDouble(
-			PARAMETER_START_VALUE_OF_P,
-			"This parameter defines start parameter p0 in equation for measurment.",
-			Integer.MIN_VALUE,
-			Integer.MAX_VALUE,
-			1));
+				PARAMETER_CONSTANT_B,
+				"This parameter defines costant B in equation for xk.",
+				Integer.MIN_VALUE,
+				Integer.MAX_VALUE,
+				1));
 		
 		types.add(new ParameterTypeDouble(
-			PARAMETER_RANGE_OF_NOISE,
-			"This parameter defines which text is logged to the console when this operator is executed.",
-			Integer.MIN_VALUE,
-			Integer.MAX_VALUE,
-			true));
+				PARAMETER_CONSTANT_C,
+				"This parameter defines costant C in equation for zk.",
+				Integer.MIN_VALUE,
+				Integer.MAX_VALUE,
+				1));
+		
+		types.add(new ParameterTypeDouble(
+				PARAMETER_START_VALUE_OF_P,
+				"This parameter defines start parameter p0 in equation for measurment.",
+				Integer.MIN_VALUE,
+				Integer.MAX_VALUE,
+				1));
+		
+		types.add(new ParameterTypeDouble(
+				PARAMETER_RANGE_OF_NOISE,
+				"This parameter defines which text is logged to the console when this operator is executed.",
+				Integer.MIN_VALUE,
+				Integer.MAX_VALUE,
+				true));
 
 		return types;
 	}
@@ -111,18 +127,26 @@ public class KalmanFilterOperator extends Operator{
 				
 		Double R = getParameterAsDouble(PARAMETER_RANGE_OF_NOISE);
 		Double A = getParameterAsDouble(PARAMETER_CONSTANT_A);
+		Double B = getParameterAsDouble(PARAMETER_CONSTANT_B);
+		Double C = getParameterAsDouble(PARAMETER_CONSTANT_C);
 		Double Pk = getParameterAsDouble(PARAMETER_START_VALUE_OF_P);
 		Boolean choise = getParameterAsBoolean(PARAMETER_DEFINE_START_VALUE);
-		Double xk;
+		Double xk,zk,x;
 		//parameter for gain
 		Double gk;
+		Integer u = 1;
+		
+		if((A + B) != 1){
+			throw new OperatorException("Sum of constant A and B have to be 1!");
+		}
 				
 		if(choise){
 			xk = getParameterAsDouble(PARAMETER_START_VALUE);
 		} else {
 			xk = exampleSet.getExample(0).getValue(attributes.getLabel());
 		}
-		
+		x = xk;
+	
 		LogService.getRoot().log(Level.INFO,"x0 = " + xk);
 		
 		// create a new attribute
@@ -132,20 +156,45 @@ public class KalmanFilterOperator extends Operator{
 		targetAttribute.setTableIndex(attributes.size());
 		exampleSet.getExampleTable().addAttribute(targetAttribute);
 		attributes.addRegular(targetAttribute);
+		
+		newName = "statistic";
+		Attribute statistic = AttributeFactory.createAttribute(newName, Ontology.INTEGER);
+
+		statistic.setTableIndex(attributes.size());
+		exampleSet.getExampleTable().addAttribute(statistic);
+		attributes.addRegular(statistic);
+		
+		
 		Attribute label = attributes.getLabel();
+		
+		Boolean realUp,predictUp;
+		Double lastOneReal = xk, lastOnePredict = xk;
 		
 		//CALCULATE
 		for(Example example:exampleSet){
 			//predict
-			xk = A*xk;
+			xk = A*xk + B*example.getValue(label);
 			Pk = A*Pk*A;
 			
+			x = A*x + B*example.getValue(label);
+			zk = C*x; //+ noise for now 0
+			
 			//update
+			gk = Pk == 0 ? 1 : Pk*C/(C*Pk*C + R);
+			xk = xk + (gk*(zk - C*xk));
+			Pk = (1 - gk*C)*Pk;
 			
-			gk = Pk == 0 ? 1 : Pk/(Pk + R);
-			xk = xk + (gk*(example.getValue(label) - xk));
-			Pk = (1 - gk)*Pk;
+			realUp = example.getValue(label) > lastOneReal;
+			predictUp = xk > lastOnePredict;
 			
+			if(realUp == predictUp){
+				example.setValue(statistic, 1);
+			} else {
+				example.setValue(statistic, 0);
+			}
+			
+			lastOneReal = example.getValue(label);
+			lastOnePredict = xk;
 			example.setValue(targetAttribute, xk);
 		}
 		
