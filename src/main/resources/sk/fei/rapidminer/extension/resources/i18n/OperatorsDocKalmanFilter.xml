@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="windows-1252" standalone="no"?>
+<operatorHelp lang="en_EN">
+    <operator>
+      <key>my_kalman_filter</key>
+      <name>Kalman Filter</name>
+    </operator>
+
+    <group>
+      <key>kalman_group</key>
+      <name>Kalman Group</name>
+    </group>
+
+</operatorHelp>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<operators name="kalman_filter" version="6.0" docbundle="sk/fei/rapidminer/extension/resources/i18n/OperatorsDocKalmanFilter">
+    <group key="">
+        <group key="kalman_group">
+           <operator>
+              <key>my_kalman_filter</key>
+              <class>sk.fei.rapidminer.extension.operator.KalmanFilterOperator</class>
+              <icon>earth.png</icon>
+           </operator>
+         </group>
+    </group>
+</operators>
