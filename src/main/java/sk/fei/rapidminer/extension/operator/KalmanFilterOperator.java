@@ -51,6 +51,7 @@ public class KalmanFilterOperator extends Operator{
 			@Override
 			public ExampleSetMetaData modifyExampleSet(ExampleSetMetaData metaData ) throws UndefinedParameterError{
 				metaData.addAttribute(new AttributeMetaData("result", Ontology.REAL));
+				metaData.addAttribute(new AttributeMetaData("statistic", Ontology.INTEGER));
 				return metaData;
 			}
 		});
@@ -72,7 +73,7 @@ public class KalmanFilterOperator extends Operator{
 				"This parameter defines custom start value x0.",
 				Double.MIN_VALUE,
 				Double.MAX_VALUE,
-				1);
+				true);
 		
 		type.registerDependencyCondition(
 				new BooleanParameterCondition(
@@ -85,14 +86,14 @@ public class KalmanFilterOperator extends Operator{
 				"This parameter defines costant A in equation for xk.",
 				Integer.MIN_VALUE,
 				Integer.MAX_VALUE,
-				1));
+				0.8));
 		
 		types.add(new ParameterTypeDouble(
 				PARAMETER_CONSTANT_B,
 				"This parameter defines costant B in equation for xk.",
 				Integer.MIN_VALUE,
 				Integer.MAX_VALUE,
-				1));
+				0.2));
 		
 		types.add(new ParameterTypeDouble(
 				PARAMETER_CONSTANT_C,
@@ -120,6 +121,7 @@ public class KalmanFilterOperator extends Operator{
 	
 	@Override
 	public void doWork() throws OperatorException{
+		long startTime = System.currentTimeMillis();
 		LogService.getRoot().log(Level.INFO,"Kalman filter start!");
 		ExampleSet exampleSet = exampleSetInput.getData(ExampleSet.class);
 		// get attributes from example set
@@ -146,6 +148,8 @@ public class KalmanFilterOperator extends Operator{
 			xk = exampleSet.getExample(0).getValue(attributes.getLabel());
 		}
 		x = xk;
+		
+		
 	
 		LogService.getRoot().log(Level.INFO,"x0 = " + xk);
 		
@@ -177,7 +181,7 @@ public class KalmanFilterOperator extends Operator{
 			Pk = A*Pk*A;
 			
 			x = A*x + B*example.getValue(label);
-			zk = C*x; //+ noise for now 0
+			zk = C*x;
 			
 			//update
 			gk = Pk == 0 ? 1 : Pk*C/(C*Pk*C + R);
@@ -200,7 +204,8 @@ public class KalmanFilterOperator extends Operator{
 		
 
 		exampleSetOutput.deliver(exampleSet);
-		LogService.getRoot().log(Level.INFO,"Kalman filter ends!");
+		long endTime = System.currentTimeMillis() - startTime;
+		LogService.getRoot().log(Level.INFO,"Kalman filter ends! Duration: " + endTime + " ms");
 	}
 
 }
